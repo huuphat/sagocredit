@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kế Hoạch Chinh Phục Thái Lan: Bangkok & Ayutthaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Ứng dụng được cấu trúc theo dạng trang đơn (SPA) với các tab điều hướng, bao gồm một tính năng mới "Chuyến Đi Tùy Chỉnh". Tab này cho phép người dùng nhập sở thích, số ngày, và ngân sách để AI tạo ra một lịch trình hoàn toàn mới. Cấu trúc này biến ứng dụng từ một kế hoạch tĩnh thành một công cụ lập kế hoạch động và tương tác. -->
+    <!-- Visualization & Content Choices: Tính năng "Chuyến Đi Tùy Chỉnh" sử dụng một form nhập liệu đơn giản. Khi người dùng gửi yêu cầu, một prompt chi tiết được tạo ra và gửi đến Gemini API, yêu cầu một phản hồi dạng JSON có cấu trúc. Phản hồi này sau đó được phân tích và hiển thị động dưới dạng một lịch trình chi tiết, tương tự như tab Lịch trình có sẵn. Việc này thể hiện một cách sử dụng API nâng cao, tập trung vào việc tạo nội dung có cấu trúc thay vì chỉ trả lời câu hỏi. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #FDFBF8;
+        }
+        .active-tab {
+            border-bottom-color: #C08261;
+            color: #C08261;
+            font-weight: 700;
+        }
+        .tab-content {
+            display: none;
+        }
+        .active-content {
+            display: block;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 1.25rem;
+            top: 1.25rem;
+            bottom: -1.25rem;
+            width: 2px;
+            background-color: #E4C59E;
+            transform: translateX(-50%);
+        }
+         .timeline-item:last-child::before {
+            display: none;
+        }
+        .icon-bg {
+            background-color: #9A8B7A;
+        }
+        .details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .details-content.open {
+            max-height: 1500px;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: auto;
+            max-height: 400px;
+        }
+        .gemini-response {
+            white-space: pre-wrap;
+            line-height: 1.7;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #C08261;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#9A8B7A]">Kế Hoạch Chinh Phục Thái Lan</h1>
+            <p class="text-lg text-gray-600 mt-2">Công cụ lập kế hoạch du lịch thông minh</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center border-b-2 border-gray-200 mb-8">
+            <button class="tab-button text-lg py-4 px-6 border-b-4 border-transparent transition-all duration-300 active-tab" onclick="showTab('overview')">Tổng Quan</button>
+            <button class="tab-button text-lg py-4 px-6 border-b-4 border-transparent transition-all duration-300" onclick="showTab('itinerary')">Lịch Trình Mẫu</button>
+            <button class="tab-button text-lg py-4 px-6 border-b-4 border-transparent transition-all duration-300" onclick="showTab('budget')">Kinh Phí</button>
+            <button class="tab-button text-lg py-4 px-6 border-b-4 border-transparent transition-all duration-300" onclick="showTab('custom')">Chuyến Đi Tùy Chỉnh</button>
+            <button class="tab-button text-lg py-4 px-6 border-b-4 border-transparent transition-all duration-300" onclick="showTab('ai')">Trợ Lý AI</button>
+        </nav>
+
+        <main>
+            <section id="overview" class="tab-content active-content">
+                 <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Thông tin chuyến đi mẫu</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div><h3 class="font-bold text-gray-700">🗓️ Thời gian</h3><p>26/09/2025 - 01/10/2025 (6 ngày 5 đêm)</p></div>
+                            <div><h3 class="font-bold text-gray-700">👥 Số lượng</h3><p>4-5 người</p></div>
+                            <div><h3 class="font-bold text-gray-700">🎨 Sắc thái chuyến đi</h3><div class="flex flex-wrap gap-2 mt-1"><span class="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">Thiên nhiên</span><span class="bg-blue-100 text-blue-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">Thư giãn</span><span class="bg-yellow-100 text-yellow-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">Thành phố</span><span class="bg-purple-100 text-purple-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">Văn hóa</span></div></div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-700 mb-2">✈️ Chuyến bay đề xuất (chiều đi)</h3>
+                            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50"><p class="font-semibold">Vietjet Air / Thai AirAsia</p><p><strong>Hành trình:</strong> SGN (TP.HCM) → DMK (Don Mueang, Bangkok)</p><p><strong>Giá vé tham khảo:</strong> ~1.450.000 VND / người (chưa gồm hành lý ký gửi)</p><p class="text-sm text-gray-500 mt-1">Lưu ý: Giá vé đã được kiểm tra và đáp ứng tiêu chí dưới 2 triệu. Nên đặt sớm để có giá tốt nhất.</p></div>
+                        </div>
+                        <div class="md:col-span-2">
+                             <h3 class="font-bold text-gray-700 mb-2">🏨 Nơi ở & 🚆 Di chuyển</h3>
+                             <p><strong>Nơi ở:</strong> Ưu tiên các hostel hoặc guesthouse sạch sẽ, có phòng riêng cho nhóm. Khu vực đề xuất: Sukhumvit (gần tàu BTS) hoặc gần ga tàu Hua Lamphong để tiện di chuyển. Đặt phòng qua Agoda/Booking.com.</p>
+                             <p><strong>Di chuyển chính:</strong> Tàu điện (BTS/MRT) ở Bangkok và tàu hỏa giữa các thành phố là phương án chính, tiết kiệm và hiệu quả.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="itinerary" class="tab-content">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8"><h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Hành trình khám phá (Mẫu)</h2><p class="mb-8 text-gray-600">Đây là lịch trình gợi ý, bạn có thể linh hoạt điều chỉnh. Nhấp vào mỗi ngày để xem chi tiết.</p><div class="relative space-y-8"><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day1')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">1</div><h3 class="text-xl font-bold">Ngày 1: Bangkok Sôi Động</h3><p class="text-gray-500">Nhập cảnh, nhận phòng và khám phá Chinatown</p><div id="day1" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>✈️ Sáng:</strong> Bay từ HCM đến sân bay Don Mueang (DMK). Làm thủ tục nhập cảnh, mua SIM card.</li><li><strong>🚆 Trưa:</strong> Di chuyển vào trung tâm bằng xe bus A1 đến trạm BTS Mo Chit, sau đó đi BTS/MRT về khách sạn.</li><li><strong>🏨 Chiều:</strong> Nhận phòng, nghỉ ngơi.</li><li><strong>🏮 Tối:</strong> Khám phá khu phố Tàu (Chinatown - Yaowarat), thưởng thức ẩm thực đường phố đặc sắc.</li></ul></div></div><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day2')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">2</div><h3 class="text-xl font-bold">Ngày 2: Dấu Ấn Hoàng Gia & Sông Nước</h3><p class="text-gray-500">Tham quan cung điện và dạo chợ đêm bên sông</p><div id="day2" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>👑 Sáng:</strong> Tham quan Hoàng Cung (Grand Palace) và Chùa Phật Ngọc (Wat Phra Kaew). (Lưu ý trang phục lịch sự).</li><li><strong>🧘 Trưa:</strong> Ghé Chùa Phật Nằm (Wat Pho), trải nghiệm massage Thái cổ truyền.</li><li><strong>🛶 Chiều:</strong> Đi thuyền trên sông Chao Phraya, ngắm Chùa Bình Minh (Wat Arun) lúc hoàng hôn.</li><li><strong>🎡 Tối:</strong> Vui chơi, ăn tối tại chợ đêm Asiatique The Riverfront.</li></ul></div></div><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day3')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">3</div><h3 class="text-xl font-bold">Ngày 3: Về Miền Di Sản Ayutthaya</h3><p class="text-gray-500">Khám phá cố đô bằng tàu hỏa và xe đạp</p><div id="day3" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>🚂 Sáng:</strong> Ra ga Hua Lamphong, đi tàu hỏa đến Ayutthaya (khoảng 1.5 - 2 tiếng, trải nghiệm thú vị).</li><li><strong>🚲 Trưa:</strong> Thuê xe đạp hoặc tuk-tuk để khám phá Công viên Lịch sử Ayutthaya - di sản UNESCO. Các điểm chính: Wat Mahathat (đầu Phật trong rễ cây), Wat Phra Si Sanphet.</li><li><strong>🌅 Chiều:</strong> Ngắm hoàng hôn trên những tàn tích cổ kính.</li><li><strong>🍜 Tối:</strong> Thưởng thức đặc sản địa phương trước khi đi tàu về lại Bangkok.</li></ul></div></div><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day4')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">4</div><h3 class="text-xl font-bold">Ngày 4: Thư Giãn "Lười" & Thiên Nhiên</h3><p class="text-gray-500">Tìm về "lá phổi xanh" của Bangkok</p><div id="day4" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>🚴 Sáng & Chiều:</strong> Dành cả ngày để thư giãn tại Bang Krachao, "lá phổi xanh" của Bangkok. Thuê xe đạp, dạo quanh những con đường làng rợp bóng cây, ghé quán cà phê ven sông và tận hưởng không khí trong lành.</li><li><strong>💆 Tối:</strong> Quay về trung tâm, tự do lựa chọn: massage thư giãn hoặc khám phá một khu chợ đêm khác.</li></ul></div></div><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day5')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">5</div><h3 class="text-xl font-bold">Ngày 5: Thiên Đường Mua Sắm</h3><p class="text-gray-500">Thỏa sức mua sắm và chuẩn bị về</p><div id="day5" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>🛍️ Cả ngày:</strong> Khám phá khu Siam với chuỗi trung tâm thương mại lớn: Siam Paragon, CentralWorld, MBK Center.</li><li><strong>🎨 Lựa chọn khác:</strong> Nếu không thích mua sắm, có thể tham quan Bảo tàng Nghệ thuật và Văn hóa Bangkok (BACC).</li><li><strong>🎁 Tối:</strong> Mua sắm quà lưu niệm tại chợ Pratunam hoặc Big C. Sắp xếp hành lý.</li></ul></div></div><div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleDetails('day6')"><div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">6</div><h3 class="text-xl font-bold">Ngày 6: Tạm Biệt Bangkok</h3><p class="text-gray-500">Bay về lại TP. Hồ Chí Minh</p><div id="day6" class="details-content"><ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200"><li><strong>☕ Sáng:</strong> Ăn sáng, uống cà phê.</li><li><strong>🚕 Trưa:</strong> Di chuyển ra sân bay DMK, làm thủ tục.</li><li><strong>✈️ Chiều:</strong> Đáp chuyến bay về lại TP.HCM, kết thúc hành trình.</li></ul></div></div></div></div>
+            </section>
+
+            <section id="budget" class="tab-content">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8"><h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Dự Trù Kinh Phí (ước tính / người)</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center"><div class="chart-container"><canvas id="budgetChart"></canvas></div><div class="space-y-4"><div><h3 class="font-bold text-lg">Tổng cộng: ~ 9,500,000 VND / người</h3><p class="text-sm text-gray-500">Mức chi phí này khá thoải mái, có thể điều chỉnh tùy theo nhu cầu mua sắm và ăn uống.</p></div><ul class="space-y-2 text-gray-700"><li class="flex items-center"><span class="w-4 h-4 rounded-full bg-[#E4C59E] mr-3"></span><strong>Vé máy bay khứ hồi:</strong> ~ 3,000,000 VND</li><li class="flex items-center"><span class="w-4 h-4 rounded-full bg-[#C08261] mr-3"></span><strong>Nơi ở (5 đêm):</strong> ~ 1,500,000 VND</li><li class="flex items-center"><span class="w-4 h-4 rounded-full bg-[#9A8B7A] mr-3"></span><strong>Ăn uống:</strong> ~ 2,500,000 VND</li><li class="flex items-center"><span class="w-4 h-4 rounded-full bg-[#756655] mr-3"></span><strong>Di chuyển & Tham quan:</strong> ~ 1,500,000 VND</li><li class="flex items-center"><span class="w-4 h-4 rounded-full bg-[#EAE0D5] mr-3"></span><strong>Chi phí phát sinh:</strong> ~ 1,000,000 VND</li></ul></div></div></div>
+            </section>
+            
+            <section id="custom" class="tab-content">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                    <h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Thiết Kế Chuyến Đi Của Riêng Bạn</h2>
+                    <form id="custom-trip-form" class="space-y-6">
+                        <div>
+                            <label class="font-bold text-gray-700">1. Bạn muốn đi bao nhiêu ngày?</label>
+                            <input type="number" id="trip-days" value="5" min="2" max="10" class="mt-2 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C08261] focus:border-transparent transition">
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700">2. Sở thích của bạn là gì?</label>
+                            <div id="trip-interests" class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="checkbox" value="Ẩm thực" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 rounded mr-3"> Ẩm thực</label>
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="checkbox" value="Lịch sử & Văn hóa" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 rounded mr-3"> Lịch sử & Văn hóa</label>
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="checkbox" value="Mua sắm" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 rounded mr-3"> Mua sắm</label>
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="checkbox" value="Thiên nhiên & Thư giãn" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 rounded mr-3"> Thiên nhiên</label>
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="checkbox" value="Cuộc sống về đêm" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 rounded mr-3"> Cuộc sống về đêm</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="font-bold text-gray-700">3. Mức ngân sách của bạn?</label>
+                            <div id="trip-budget" class="mt-2 flex flex-col sm:flex-row gap-4">
+                                <label class="flex-1 flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="radio" name="budget" value="Tiết kiệm" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 mr-3" checked> Tiết kiệm</label>
+                                <label class="flex-1 flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="radio" name="budget" value="Cân bằng" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 mr-3"> Cân bằng</label>
+                                <label class="flex-1 flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"><input type="radio" name="budget" value="Thoải mái" class="h-4 w-4 text-[#C08261] focus:ring-[#C08261] border-gray-300 mr-3"> Thoải mái</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-[#9A8B7A] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#756655] transition-colors duration-300">Tạo Lịch Trình Ngay</button>
+                    </form>
+                    <div id="custom-trip-result" class="mt-8"></div>
+                </div>
+            </section>
+
+            <section id="ai" class="tab-content">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8"><h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Trợ Lý Du Lịch AI</h2><div class="space-y-8"><div><h3 class="text-xl font-semibold mb-2">Hỏi AI Gợi Ý</h3><p class="mb-4 text-gray-600">Bạn có câu hỏi nào khác không? Hãy hỏi trợ lý AI để có thêm gợi ý cho chuyến đi nhé.</p><div class="flex flex-col sm:flex-row gap-2"><input type="text" id="ai-prompt" placeholder="VD: Gợi ý 5 quán cà phê đẹp ở Bangkok" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C08261] focus:border-transparent transition"><button id="ai-submit" class="bg-[#9A8B7A] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#756655] transition-colors duration-300">Gửi câu hỏi</button></div><div id="ai-response-container" class="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50 min-h-[100px]"><p class="text-gray-500">Câu trả lời từ AI sẽ xuất hiện ở đây...</p></div></div><div><h3 class="text-xl font-semibold mb-2">Gợi Ý Nhanh</h3><p class="mb-4 text-gray-600">Chọn một chủ đề để nhận ngay thông tin hữu ích từ AI.</p><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"><button class="quick-prompt-btn bg-white p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-[#C08261] transition" data-prompt="Liệt kê 5 món ăn đường phố nổi tiếng ở Bangkok, Thái Lan mà du khách nên thử, kèm theo mô tả ngắn gọn cho mỗi món.">🍜 Món ăn nên thử</button><button class="quick-prompt-btn bg-white p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-[#C08261] transition" data-prompt="Nêu 5 mẹo về văn hoá ứng xử quan trọng cho du khách khi đến thăm chùa và các nơi tôn nghiêm ở Thái Lan.">🙏 Mẹo văn hoá</button><button class="quick-prompt-btn bg-white p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-[#C08261] transition" data-prompt="Liệt kê 10 câu giao tiếp tiếng Thái cơ bản cho du khách, bao gồm phiên âm và nghĩa tiếng Việt. Ví dụ: Xin chào, Cảm ơn, Xin lỗi.">🗣️ Câu giao tiếp cơ bản</button></div></div></div></div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const aiSubmitBtn = document.getElementById('ai-submit');
+        const aiPromptInput = document.getElementById('ai-prompt');
+        const aiResponseContainer = document.getElementById('ai-response-container');
+        const quickPromptButtons = document.querySelectorAll('.quick-prompt-btn');
+        const customTripForm = document.getElementById('custom-trip-form');
+        const customTripResult = document.getElementById('custom-trip-result');
+
+        function showTab(tabId) {
+            tabButtons.forEach(button => button.classList.remove('active-tab'));
+            tabContents.forEach(content => content.classList.remove('active-content'));
+            const button = document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`);
+            const content = document.getElementById(tabId);
+            button.classList.add('active-tab');
+            content.classList.add('active-content');
+        }
+
+        function toggleDetails(dayId) {
+            const content = document.getElementById(dayId);
+            if (content) content.classList.toggle('open');
+        }
+        
+        function toggleGeneratedDetails(dayId) {
+            const content = document.querySelector(`.generated-details[data-day="${dayId}"]`);
+            if (content) content.classList.toggle('open');
+        }
+
+        async function callGemini(prompt, responseElement, responseType = 'text', schema = null) {
+            responseElement.innerHTML = '<div class="flex justify-center items-center p-4"><div class="loader"></div></div>';
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            if (responseType === 'json' && schema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                };
+            }
+
+            try {
+                let response;
+                let backoff = 1000;
+                for (let i = 0; i < 5; i++) {
+                    response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (response.ok) break;
+                    await new Promise(resolve => setTimeout(resolve, backoff));
+                    backoff *= 2;
+                }
+                
+                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const text = candidate.content.parts[0].text;
+                    if (responseType === 'json') {
+                         return JSON.parse(text);
+                    } else {
+                        responseElement.innerHTML = `<p class="gemini-response">${text}</p>`;
+                    }
+                } else {
+                    throw new Error("Invalid response structure from API.");
+                }
+            } catch (error) {
+                responseElement.innerHTML = `<p class="text-red-500">Đã xảy ra lỗi khi tạo lịch trình. Vui lòng thử lại sau.</p>`;
+                return null;
+            }
+        }
+
+        aiSubmitBtn.addEventListener('click', () => {
+            const prompt = aiPromptInput.value.trim();
+            if (prompt) callGemini(prompt, aiResponseContainer);
+        });
+
+        quickPromptButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const prompt = button.dataset.prompt;
+                if (prompt) {
+                    showTab('ai');
+                    aiPromptInput.value = '';
+                    callGemini(prompt, aiResponseContainer);
+                }
+            });
+        });
+
+        customTripForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const days = document.getElementById('trip-days').value;
+            const interests = Array.from(document.querySelectorAll('#trip-interests input:checked')).map(el => el.value).join(', ');
+            const budget = document.querySelector('#trip-budget input:checked').value;
+
+            const prompt = `Với vai trò là một chuyên gia lập kế hoạch du lịch, hãy tạo một lịch trình chi tiết cho chuyến đi ${days} ngày tại Bangkok, Thái Lan. Chuyến đi này dành cho một nhóm có ngân sách ${budget} và sở thích chính là: ${interests || 'khám phá chung'}. Với mỗi ngày, hãy gợi ý các hoạt động cho buổi sáng, chiều, và tối, kèm theo mô tả ngắn gọn và hấp dẫn.`;
+            
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    itinerary: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                day: { type: "STRING" },
+                                title: { type: "STRING" },
+                                activities: {
+                                    type: "ARRAY",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            time: { type: "STRING" },
+                                            description: { type: "STRING" }
+                                        },
+                                        required: ["time", "description"]
+                                    }
+                                }
+                            },
+                            required: ["day", "title", "activities"]
+                        }
+                    }
+                },
+                required: ["itinerary"]
+            };
+
+            const data = await callGemini(prompt, customTripResult, 'json', schema);
+            
+            if (data && data.itinerary) {
+                renderCustomItinerary(data.itinerary);
+            }
+        });
+
+        function renderCustomItinerary(itinerary) {
+            let html = '<h2 class="text-2xl font-bold text-[#C08261] mb-6 border-l-4 border-[#C08261] pl-4">Lịch Trình Gợi Ý Dành Cho Bạn</h2>';
+            html += '<div class="relative space-y-8">';
+            itinerary.forEach((dayPlan, index) => {
+                const dayId = `gen-day-${index + 1}`;
+                html += `
+                    <div class="timeline-item pl-12 relative cursor-pointer" onclick="toggleGeneratedDetails('${dayId}')">
+                        <div class="icon-bg absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg transform -translate-x-1/2">${index + 1}</div>
+                        <h3 class="text-xl font-bold">${dayPlan.day}: ${dayPlan.title}</h3>
+                        <div class="details-content generated-details" data-day="${dayId}">
+                            <ul class="mt-4 space-y-2 text-gray-700 pl-4 border-l-2 border-gray-200">
+                                ${dayPlan.activities.map(act => `<li><strong>${act.time}:</strong> ${act.description}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            customTripResult.innerHTML = html;
+        }
+
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        const budgetChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Vé máy bay', 'Nơi ở', 'Ăn uống', 'Di chuyển & Tham quan', 'Phát sinh'], datasets: [{ label: 'Phân bổ chi phí', data: [3000, 1500, 2500, 1500, 1000], backgroundColor: ['#E4C59E', '#C08261', '#9A8B7A', '#756655', '#EAE0D5'], borderColor: '#FDFBF8', borderWidth: 4, hoverOffset: 8 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.parsed * 1000); } return label; } } } } } });
+    </script>
+</body>
+</html>
+
